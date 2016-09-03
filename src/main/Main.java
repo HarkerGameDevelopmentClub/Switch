@@ -12,6 +12,7 @@ import javafx.scene.image.*;
 import javafx.stage.*;
 import javafx.event.*;
 import java.net.URL;
+import java.util.*;
 
 /**
  * The main class handles everything rn
@@ -29,9 +30,9 @@ public class Main extends Application implements EventHandler<KeyEvent>
 
 	private static double PLAYER_SIZE = 50;
 	private static double PLAYER_SPEED_X = 10;
-	private static double PLAYER_SPEED_UP = -1; // negative means up
-	private static double PLAYER_SPEED_DOWN = 2;
-	
+	private static double PLAYER_SPEED_UP = -2; // negative means up
+	private static double PLAYER_SPEED_DOWN = 5;
+
 	private boolean playerGoingLeft = false;
 	private boolean playerAtWall = true;
 	private double playerX = WINDOW_WIDTH - WALL_WIDTH;
@@ -41,6 +42,12 @@ public class Main extends Application implements EventHandler<KeyEvent>
 	private int currentFrame = 0;
 
 	private MediaPlayer player;
+
+	private static double COIN_SPEED = 2;
+	private static double COIN_SIZE = 30;
+
+	private ArrayList<Double> coins = new ArrayList<Double>();
+	private int score = 0;
 
 	/**
 	 * Get the game started
@@ -66,7 +73,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
 
 		Scene s = new Scene(new Group(canvas));
 		s.setOnKeyPressed(this);
-//		s.setOnKeyReleased(this);
+		//		s.setOnKeyReleased(this);
 
 		stage.setScene(s);
 		stage.show();
@@ -114,14 +121,53 @@ public class Main extends Application implements EventHandler<KeyEvent>
 			playerAtWall = playerX == WALL_WIDTH;
 		else
 			playerAtWall = playerX == WINDOW_WIDTH - WALL_WIDTH - PLAYER_SIZE;
-		
+
 		// move player
 		playerY += playerAtWall ? PLAYER_SPEED_UP : PLAYER_SPEED_DOWN;
 		playerX += PLAYER_SPEED_X * (playerGoingLeft ? -1 : 1);
-		
+
 		//Crop player position
 		playerX = mid(WALL_WIDTH, playerX, WINDOW_WIDTH-WALL_WIDTH-PLAYER_SIZE);
 		playerY = mid(0, playerY, WINDOW_HEIGHT - PLAYER_SIZE);
+
+		//Update coins
+		for (int i = coins.size() - 1; i >= 1; i -= 2)
+		{
+			if (squaresAreColliding(coins.get(i-1), coins.get(i), COIN_SIZE, playerX + 10, playerY + 10, PLAYER_SIZE - 20))
+			{
+				coins.remove(i);
+				coins.remove(i-1);
+				score++;
+			}
+			else
+			{
+				Double newY = new Double(coins.get(i).doubleValue() + COIN_SPEED);
+				if (newY < WINDOW_HEIGHT)
+					coins.set(i, newY);
+				else
+				{
+					coins.remove(i);
+					coins.remove(i-1);
+				}
+			}
+		}
+		//Add new coins
+		if (currentFrame % 60 == 0)
+		{
+			if (Math.random() > 0.75)
+			{
+				boolean upward = Math.random() >= 0.5;
+				int imax = (int) ((WINDOW_WIDTH - 2 * WALL_WIDTH) / COIN_SIZE);
+				for (int i = 0; i < imax; i++)
+				{
+					coins.add(new Double(WALL_WIDTH + i * COIN_SIZE));
+					if (upward)
+						coins.add(new Double(-i * COIN_SIZE/2));
+					else
+						coins.add(new Double(-(imax - i) * COIN_SIZE/2));
+				}
+			}
+		}
 	}
 
 	/**
@@ -133,17 +179,23 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		// Clear the previous frame
 		if (currentFrame % 3 == 0)
 		{
-			context.setFill(Color.GRAY);
-			context.fillRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+			tileDraw(new Image("/bg.png"), 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 		}
 		// Draw the walls
 		Image wallImage = new Image("/wall.png");
 		tileDraw(wallImage, 0, 0, WALL_WIDTH, WINDOW_HEIGHT);
 		tileDraw(wallImage, WINDOW_WIDTH-WALL_WIDTH, 0, WALL_WIDTH, WINDOW_HEIGHT);
-		
+		// Draw the wagon
 		String wagonName = playerAtWall ? "wagon" : "thrust";
 		wagonName += playerGoingLeft ? "l" : "r";
 		context.drawImage(new Image("/" + wagonName + ".png"), playerX, playerY);
+		// Draw the coins
+		int coinsSize = coins.size();
+		for (int i = 0; i < coinsSize - 1; i += 2)
+			context.drawImage(new Image("/coin.png"), coins.get(i).doubleValue(), coins.get(i+1).doubleValue(), COIN_SIZE, COIN_SIZE);
+		// Draw the score
+		context.setFill(Color.WHITE);
+		context.fillText("score: " + score, 5, 20);
 	}
 
 	/**
@@ -202,11 +254,25 @@ public class Main extends Application implements EventHandler<KeyEvent>
 	 * @param c
 	 * @return
 	 */
-	public double mid(double a, double b, double c)
+	private double mid(double a, double b, double c)
 	{
 		double max = Math.max(Math.max(a,  b), c);
 		double min = Math.min(Math.min(a, b), c);
 		return a + b + c - max - min; // the one left over is the min
+	}
+	
+	private boolean areColliding(double x1min, double y1min, double x1max, double y1max, double x2min, double y2min, double x2max, double y2max)
+	{
+		boolean xCollision = (mid(x1min, x2min, x2max) == x1min)
+				|| (mid(x1max, x2min, x2max) == x1max);
+		boolean yCollision = (mid(y1min, y2min, y2max) == y1min)
+				|| (mid(y1max, y2min, y2max) == y1max);
+		return xCollision && yCollision;
+	}
+	
+	private boolean squaresAreColliding(double x1min, double y1min, double size1, double x2min, double y2min, double size2)
+	{
+		return areColliding(x1min, y1min, x1min+size1, y1min+size2, x2min, y2min, x2min+size2, y2min+size2);
 	}
 
 }
