@@ -12,7 +12,6 @@ import javafx.scene.image.*;
 import javafx.stage.*;
 import javafx.event.*;
 import java.net.URL;
-import java.util.*;
 
 /**
  * The main class handles everything rn
@@ -33,14 +32,13 @@ public class Main extends Application implements EventHandler<KeyEvent>
 	private static double PLAYER_SPEED_UP = -1; // negative means up
 	private static double PLAYER_SPEED_DOWN = 2;
 	
-	private enum PlayerState {LEFT_WALL, RIGHT_WALL, LEFT_AIR, RIGHT_AIR};
-	private PlayerState playerState;
+	private boolean playerGoingLeft = false;
+	private boolean playerAtWall = true;
 	private double playerX = WINDOW_WIDTH - WALL_WIDTH;
 	private double playerY = WINDOW_HEIGHT / 2;
 
 	private FrameTimer timer;
 	private int currentFrame = 0;
-	private TreeSet<String> keysPressed = new TreeSet<String>();
 
 	private MediaPlayer player;
 
@@ -68,7 +66,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
 
 		Scene s = new Scene(new Group(canvas));
 		s.setOnKeyPressed(this);
-		s.setOnKeyReleased(this);
+//		s.setOnKeyReleased(this);
 
 		stage.setScene(s);
 		stage.show();
@@ -112,21 +110,14 @@ public class Main extends Application implements EventHandler<KeyEvent>
 	private void updateState()
 	{
 		// update player state
-		if (isKeyPressed("q")) // q = go left
-		{
-			boolean atLeftWall = (playerX == WALL_WIDTH);
-			System.out.println(atLeftWall);
-			playerState = atLeftWall ? PlayerState.LEFT_WALL : PlayerState.LEFT_AIR;
-		}
+		if (playerGoingLeft) // q = go left
+			playerAtWall = playerX == WALL_WIDTH;
 		else
-		{
-			boolean atRightWall = (playerX == WINDOW_WIDTH - WALL_WIDTH - PLAYER_SIZE);
-			playerState = atRightWall ? PlayerState.RIGHT_WALL : PlayerState.RIGHT_AIR;
-		}
+			playerAtWall = playerX == WINDOW_WIDTH - WALL_WIDTH - PLAYER_SIZE;
 		
 		// move player
-		playerY += playerAtWall() ? PLAYER_SPEED_UP : PLAYER_SPEED_DOWN;
-		playerX += PLAYER_SPEED_X * (playerGoingLeft() ? -1 : 1);
+		playerY += playerAtWall ? PLAYER_SPEED_UP : PLAYER_SPEED_DOWN;
+		playerX += PLAYER_SPEED_X * (playerGoingLeft ? -1 : 1);
 		
 		//Crop player position
 		playerX = mid(WALL_WIDTH, playerX, WINDOW_WIDTH-WALL_WIDTH-PLAYER_SIZE);
@@ -150,22 +141,8 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		tileDraw(wallImage, 0, 0, WALL_WIDTH, WINDOW_HEIGHT);
 		tileDraw(wallImage, WINDOW_WIDTH-WALL_WIDTH, 0, WALL_WIDTH, WINDOW_HEIGHT);
 		
-		String wagonName = null;
-		switch (playerState)
-		{
-		case LEFT_AIR:
-			wagonName = "thrustl";
-			break;
-		case LEFT_WALL:
-			wagonName = "wagonl";
-			break;
-		case RIGHT_AIR:
-			wagonName = "thrustr";
-			break;
-		case RIGHT_WALL:
-			wagonName = "wagonr";
-			break;
-		}
+		String wagonName = playerAtWall ? "wagon" : "thrust";
+		wagonName += playerGoingLeft ? "l" : "r";
 		context.drawImage(new Image("/" + wagonName + ".png"), playerX, playerY);
 	}
 
@@ -175,17 +152,8 @@ public class Main extends Application implements EventHandler<KeyEvent>
 	 */
 	@Override
 	public void handle(KeyEvent event) {
-		String key = event.getText().toLowerCase(); // shift key should not affect
-		EventType<KeyEvent> type = event.getEventType();
-		if (type == KeyEvent.KEY_PRESSED)
-			keysPressed.add(key);
-		else if (type == KeyEvent.KEY_RELEASED)
-			keysPressed.remove(key);
-	}
-
-	public boolean isKeyPressed(String key)
-	{
-		return keysPressed.contains(key);
+		if (event.getText().toLowerCase().equals("q"))
+			playerGoingLeft = !playerGoingLeft;
 	}
 
 	/**
@@ -239,16 +207,6 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		double max = Math.max(Math.max(a,  b), c);
 		double min = Math.min(Math.min(a, b), c);
 		return a + b + c - max - min; // the one left over is the min
-	}
-	
-	private boolean playerAtWall()
-	{
-		return playerState == PlayerState.LEFT_WALL || playerState == PlayerState.RIGHT_WALL;
-	}
-	
-	private boolean playerGoingLeft()
-	{
-		return playerState == PlayerState.LEFT_WALL || playerState == PlayerState.LEFT_AIR;
 	}
 
 }
