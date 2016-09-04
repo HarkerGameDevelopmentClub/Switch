@@ -6,6 +6,7 @@ import javafx.scene.*;
 import javafx.scene.canvas.*;
 import javafx.scene.paint.*;
 import javafx.scene.input.*;
+import javafx.scene.text.*;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.image.*;
@@ -25,13 +26,13 @@ public class Main extends Application implements EventHandler<KeyEvent>
 	private GraphicsContext context;
 
 	private static double WALL_WIDTH = 50;
-	private static double WINDOW_WIDTH = 400;
+	private static double WINDOW_WIDTH = 800;
 	private static double WINDOW_HEIGHT = 600;
 
 	private static double PLAYER_SIZE = 50;
 	private static double PLAYER_SPEED_X = 10;
 	private static double PLAYER_SPEED_UP = -2; // negative means up
-	private static double PLAYER_SPEED_DOWN = 5;
+	private static double PLAYER_SPEED_DOWN = 1;
 
 	private boolean playerGoingLeft = false;
 	private boolean playerAtWall = true;
@@ -43,11 +44,18 @@ public class Main extends Application implements EventHandler<KeyEvent>
 
 	private MediaPlayer player;
 
-	private static double COIN_SPEED = 2;
+	private static double COIN_SPEED = 3;
 	private static double COIN_SIZE = 30;
 
 	private ArrayList<Double> coins = new ArrayList<Double>();
 	private int score = 0;
+
+	private static double SPIKE_SIZE = 50;
+	private static double SPIKE_SPEED = 2;
+
+	private ArrayList<Double> spikes = new ArrayList<Double>();
+
+	private int dead = 0;
 
 	/**
 	 * Get the game started
@@ -66,7 +74,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
 	public void start(Stage stage)
 	{
 		stage.setTitle("switch");
-		//		stage.setResizable(false);
+		stage.setResizable(false);
 
 		canvas = new Canvas(WINDOW_WIDTH, WINDOW_HEIGHT);
 		context = canvas.getGraphicsContext2D();
@@ -81,7 +89,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		timer = new FrameTimer();
 		timer.start();
 
-		// Play music routine from Flappy Bird
+		// Flappy bird's play music code, adapted for Switch
 		URL path = getClass().getResource("/bgm.mp3");
 		Media music = new Media(path.toString());
 		player = new MediaPlayer(music);
@@ -116,6 +124,12 @@ public class Main extends Application implements EventHandler<KeyEvent>
 	 */
 	private void updateState()
 	{
+		//DONT DO ANYTHNG if dead
+		if (dead > 0)
+		{
+			dead--;
+			return;
+		}
 		// update player state
 		if (playerGoingLeft) // q = go left
 			playerAtWall = playerX == WALL_WIDTH;
@@ -142,7 +156,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
 			else
 			{
 				Double newY = new Double(coins.get(i).doubleValue() + COIN_SPEED);
-				if (newY < WINDOW_HEIGHT)
+				if (newY < WINDOW_HEIGHT - SPIKE_SIZE)
 					coins.set(i, newY);
 				else
 				{
@@ -160,14 +174,49 @@ public class Main extends Application implements EventHandler<KeyEvent>
 				int imax = (int) ((WINDOW_WIDTH - 2 * WALL_WIDTH) / COIN_SIZE);
 				for (int i = 0; i < imax; i++)
 				{
-					coins.add(new Double(WALL_WIDTH + i * COIN_SIZE));
-					if (upward)
-						coins.add(new Double(-i * COIN_SIZE/2));
-					else
-						coins.add(new Double(-(imax - i) * COIN_SIZE/2));
+					if (Math.random() > 0.2)
+					{
+						coins.add(new Double(WALL_WIDTH + i * COIN_SIZE));
+						if (upward)
+							coins.add(new Double(-i * COIN_SIZE/4));
+						else
+							coins.add(new Double(-(imax - i) * COIN_SIZE/4));
+					}
 				}
 			}
 		}
+		//Add new spikes
+		if (currentFrame % 60 == 0 && Math.random() > 0.8)
+		{
+			boolean left = Math.random() >= 0.5;
+			spikes.add(left ? WALL_WIDTH : WINDOW_WIDTH - WALL_WIDTH - SPIKE_SIZE);
+			spikes.add(-SPIKE_SIZE);
+		}
+		//Move existing spikes
+		for (int i = spikes.size() - 1; i >= 1; i -= 2)
+		{
+			double spikeY = spikes.get(i);
+			if (spikeY > WINDOW_HEIGHT - SPIKE_SIZE)
+			{
+				spikes.remove(i);
+				spikes.remove(i-1);
+			}
+			else
+			{
+				spikes.set(i, spikeY + SPIKE_SPEED);
+			}
+		}
+		//Collision with spike check
+		for (int i = 0; i < spikes.size() -1; i += 2)
+		{
+			if (squaresAreColliding(spikes.get(i), spikes.get(i+1), SPIKE_SIZE, playerX, playerY, PLAYER_SIZE))
+			{
+				die();
+			}
+		}
+		//Collision with bottom row spikes
+		if (playerY + PLAYER_SIZE - 10 > WINDOW_HEIGHT - SPIKE_SIZE)
+			die();
 	}
 
 	/**
@@ -181,6 +230,13 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		{
 			tileDraw(new Image("/bg.png"), 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 		}
+		// Death screen
+		if (dead > 0)
+		{
+			context.setFill(Color.RED);
+			context.fillText("Game over at " + score + " points. Try again in " + dead, 40, WINDOW_HEIGHT/2);
+			return;
+		}
 		// Draw the walls
 		Image wallImage = new Image("/wall.png");
 		tileDraw(wallImage, 0, 0, WALL_WIDTH, WINDOW_HEIGHT);
@@ -193,7 +249,13 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		int coinsSize = coins.size();
 		for (int i = 0; i < coinsSize - 1; i += 2)
 			context.drawImage(new Image("/coin.png"), coins.get(i).doubleValue(), coins.get(i+1).doubleValue(), COIN_SIZE, COIN_SIZE);
-		// Draw the score
+		// Draw the spikes
+		int spikesSize = spikes.size();
+		for (int i = 0; i < spikesSize - 1; i += 2)
+			context.drawImage(new Image("/spike.png"), spikes.get(i).doubleValue(), spikes.get(i+1).doubleValue(), SPIKE_SIZE, SPIKE_SIZE);
+		// Draw immobile spikes
+		tileDraw(new Image("/spike.png"), 0, WINDOW_HEIGHT - SPIKE_SIZE, WINDOW_WIDTH, SPIKE_SIZE);
+		// Draw score
 		context.setFill(Color.WHITE);
 		context.fillText("score: " + score, 5, 20);
 	}
@@ -260,7 +322,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		double min = Math.min(Math.min(a, b), c);
 		return a + b + c - max - min; // the one left over is the min
 	}
-	
+
 	private boolean areColliding(double x1min, double y1min, double x1max, double y1max, double x2min, double y2min, double x2max, double y2max)
 	{
 		boolean xCollision = (mid(x1min, x2min, x2max) == x1min)
@@ -269,10 +331,21 @@ public class Main extends Application implements EventHandler<KeyEvent>
 				|| (mid(y1max, y2min, y2max) == y1max);
 		return xCollision && yCollision;
 	}
-	
+
 	private boolean squaresAreColliding(double x1min, double y1min, double size1, double x2min, double y2min, double size2)
 	{
 		return areColliding(x1min, y1min, x1min+size1, y1min+size2, x2min, y2min, x2min+size2, y2min+size2);
+	}
+
+	private void die()
+	{
+		dead = 180;
+		playerGoingLeft = false;
+		playerAtWall = true;
+		playerX = WINDOW_WIDTH;
+		playerY = WINDOW_HEIGHT/2;
+		coins.clear();
+		spikes.clear();
 	}
 
 }
