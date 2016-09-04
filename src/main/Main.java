@@ -168,7 +168,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		//Add new coins
 		if (currentFrame % 60 == 0)
 		{
-			if (Math.random() > 0.75)
+			if (Math.random() < 0.5)
 			{
 				boolean upward = Math.random() >= 0.5;
 				int imax = (int) ((WINDOW_WIDTH - 2 * WALL_WIDTH) / COIN_SIZE);
@@ -186,7 +186,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
 			}
 		}
 		//Add new spikes
-		if (currentFrame % 60 == 0 && Math.random() > 0.8)
+		if (currentFrame % 60 == 0 && Math.random() < 0.5)
 		{
 			boolean left = Math.random() >= 0.5;
 			spikes.add(left ? WALL_WIDTH : WINDOW_WIDTH - WALL_WIDTH - SPIKE_SIZE);
@@ -209,7 +209,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		//Collision with spike check
 		for (int i = 0; i < spikes.size() -1; i += 2)
 		{
-			if (squaresAreColliding(spikes.get(i), spikes.get(i+1), SPIKE_SIZE, playerX, playerY, PLAYER_SIZE))
+			if (squaresAreColliding(spikes.get(i), spikes.get(i+1), SPIKE_SIZE, playerX + 10, playerY + 10, PLAYER_SIZE - 20))
 			{
 				die();
 			}
@@ -323,12 +323,21 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		return a + b + c - max - min; // the one left over is the min
 	}
 
+	/**
+	 * Don't know if this works as it should
+	 */
 	private boolean areColliding(double x1min, double y1min, double x1max, double y1max, double x2min, double y2min, double x2max, double y2max)
 	{
 		boolean xCollision = (mid(x1min, x2min, x2max) == x1min)
-				|| (mid(x1max, x2min, x2max) == x1max);
+				|| (mid(x1max, x2min, x2max) == x1max)
+				|| (mid(x2min, x1min, x1max) == x2min)
+				|| (mid(x2max, x1min, x1max) == x2max)
+				;
 		boolean yCollision = (mid(y1min, y2min, y2max) == y1min)
-				|| (mid(y1max, y2min, y2max) == y1max);
+				|| (mid(y1max, y2min, y2max) == y1max)
+				|| (mid(y2min, y1min, y1max) == y2min)
+				|| (mid(y2max, y1min, y1max) == y2max)
+				;
 		return xCollision && yCollision;
 	}
 
