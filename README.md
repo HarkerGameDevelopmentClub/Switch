@@ -1,2 +1,3 @@
+<<<<<<< Updated upstream
 An editable demo from Club Fair. Ready for use.
-Controls: Press Q to switch directions
+Controls: Hit any letter key to switch except for Q which disables screen clearing.

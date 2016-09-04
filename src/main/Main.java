@@ -56,6 +56,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
 	private ArrayList<Double> spikes = new ArrayList<Double>();
 
 	private int dead = 0;
+	private boolean clearScreen = true;
 
 	/**
 	 * Get the game started
@@ -226,7 +227,7 @@ public class Main extends Application implements EventHandler<KeyEvent>
 	private void drawFrame()
 	{
 		// Clear the previous frame
-		if (currentFrame % 3 == 0)
+		if (clearScreen)
 		{
 			tileDraw(new Image("/bg.png"), 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 		}
@@ -267,6 +268,8 @@ public class Main extends Application implements EventHandler<KeyEvent>
 	@Override
 	public void handle(KeyEvent event) {
 		if (event.getText().toLowerCase().equals("q"))
+			clearScreen = !clearScreen;
+		else
 			playerGoingLeft = !playerGoingLeft;
 	}
 
