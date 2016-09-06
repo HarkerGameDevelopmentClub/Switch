@@ -5,13 +5,16 @@ import javafx.application.*;
 import javafx.scene.*;
 import javafx.scene.canvas.*;
 import javafx.scene.paint.*;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.scene.input.*;
-import javafx.scene.text.*;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.image.*;
 import javafx.stage.*;
 import javafx.event.*;
+
+import java.awt.Toolkit;
 import java.net.URL;
 import java.util.*;
 
@@ -57,6 +60,11 @@ public class Main extends Application implements EventHandler<KeyEvent>
 
 	private int dead = 0;
 	private boolean clearScreen = true;
+	
+	private Image backgroundImage;
+	private Image spikeImage;
+	private Image coinImage;
+	private Image wallImage;
 
 	/**
 	 * Get the game started
@@ -77,6 +85,14 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		stage.setTitle("switch");
 		stage.setResizable(false);
 
+		WINDOW_WIDTH = Toolkit.getDefaultToolkit().getScreenSize().getWidth() / 2.0;
+		WINDOW_HEIGHT = WINDOW_WIDTH * 3/4.0;
+		
+		backgroundImage = new Image("/bg.png");
+		coinImage = new Image("/coin.png");
+		spikeImage = new Image("/spike.png");
+		wallImage = new Image("/wall.png");
+		
 		canvas = new Canvas(WINDOW_WIDTH, WINDOW_HEIGHT);
 		context = canvas.getGraphicsContext2D();
 
@@ -229,8 +245,11 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		// Clear the previous frame
 		if (clearScreen)
 		{
-			tileDraw(new Image("/bg.png"), 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+			tileDraw(backgroundImage, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 		}
+		
+		context.setFont(Font.font("Comic Sans", FontWeight.BOLD, 24));
+		
 		// Death screen
 		if (dead > 0)
 		{
@@ -239,7 +258,6 @@ public class Main extends Application implements EventHandler<KeyEvent>
 			return;
 		}
 		// Draw the walls
-		Image wallImage = new Image("/wall.png");
 		tileDraw(wallImage, 0, 0, WALL_WIDTH, WINDOW_HEIGHT);
 		tileDraw(wallImage, WINDOW_WIDTH-WALL_WIDTH, 0, WALL_WIDTH, WINDOW_HEIGHT);
 		// Draw the wagon
@@ -248,17 +266,18 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		context.drawImage(new Image("/" + wagonName + ".png"), playerX, playerY);
 		// Draw the coins
 		int coinsSize = coins.size();
-		for (int i = 0; i < coinsSize - 1; i += 2)
-			context.drawImage(new Image("/coin.png"), coins.get(i).doubleValue(), coins.get(i+1).doubleValue(), COIN_SIZE, COIN_SIZE);
+		for (int i = 0; i < coinsSize - 1; i += 2){
+			context.drawImage(coinImage, coins.get(i).doubleValue(), coins.get(i+1).doubleValue(), COIN_SIZE, COIN_SIZE);
+		}
 		// Draw the spikes
 		int spikesSize = spikes.size();
 		for (int i = 0; i < spikesSize - 1; i += 2)
-			context.drawImage(new Image("/spike.png"), spikes.get(i).doubleValue(), spikes.get(i+1).doubleValue(), SPIKE_SIZE, SPIKE_SIZE);
+			context.drawImage(spikeImage, spikes.get(i).doubleValue(), spikes.get(i+1).doubleValue(), SPIKE_SIZE, SPIKE_SIZE);
 		// Draw immobile spikes
 		tileDraw(new Image("/spike.png"), 0, WINDOW_HEIGHT - SPIKE_SIZE, WINDOW_WIDTH, SPIKE_SIZE);
 		// Draw score
 		context.setFill(Color.WHITE);
-		context.fillText("score: " + score, 5, 20);
+		context.fillText("score: " + score, WALL_WIDTH * 5/4.0, 20);
 	}
 
 	/**
@@ -267,8 +286,13 @@ public class Main extends Application implements EventHandler<KeyEvent>
 	 */
 	@Override
 	public void handle(KeyEvent event) {
-		if (event.getText().toLowerCase().equals("q"))
+		if (event.getCode().toString().equals("Q"))
 			clearScreen = !clearScreen;
+		else if(event.getCode().toString().equals("ESCAPE")){
+			System.exit(0);
+			System.err.println("GAME TERMINATED");
+			return;
+		}
 		else
 			playerGoingLeft = !playerGoingLeft;
 	}
@@ -326,27 +350,10 @@ public class Main extends Application implements EventHandler<KeyEvent>
 		return a + b + c - max - min; // the one left over is the min
 	}
 
-	/**
-	 * Don't know if this works as it should
-	 */
-	private boolean areColliding(double x1min, double y1min, double x1max, double y1max, double x2min, double y2min, double x2max, double y2max)
-	{
-		boolean xCollision = (mid(x1min, x2min, x2max) == x1min)
-				|| (mid(x1max, x2min, x2max) == x1max)
-				|| (mid(x2min, x1min, x1max) == x2min)
-				|| (mid(x2max, x1min, x1max) == x2max)
-				;
-		boolean yCollision = (mid(y1min, y2min, y2max) == y1min)
-				|| (mid(y1max, y2min, y2max) == y1max)
-				|| (mid(y2min, y1min, y1max) == y2min)
-				|| (mid(y2max, y1min, y1max) == y2max)
-				;
-		return xCollision && yCollision;
-	}
-
 	private boolean squaresAreColliding(double x1min, double y1min, double size1, double x2min, double y2min, double size2)
 	{
-		return areColliding(x1min, y1min, x1min+size1, y1min+size2, x2min, y2min, x2min+size2, y2min+size2);
+		return (size1 + size2) > (x2min > x1min ? (x2min + size2 - x1min) : (x1min + size1 - x2min))
+				&& (size1 + size2) > (y2min > y1min ? (y2min + size2 - y1min) : (y1min + size1 - y2min));
 	}
 
 	private void die()
